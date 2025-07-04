@@ -1,0 +1,32 @@
+# Ignore build outputs
+/target/
+/build/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+/.idea/
+/*.iml
+*.ipr
+*.iws
+
+# VS Code
+.vscode/
+
+# Maven
+.mvn/
+!mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+.gradle/
+/build/
+
+# Environment/secret files
+.env
+application-*.yml
+application-*.properties

@@ -27,6 +27,6 @@ Thumbs.db
 /build/
 
 # Environment/secret files
-.env
 application-*.yml
 application-*.properties
+.env

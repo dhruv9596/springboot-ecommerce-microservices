@@ -63,4 +63,14 @@ public class ProductService {
         }
         return totalPrice;
     }
+
+    public void restockProduct(Long productId, Integer quantity) {
+        log.info("Restocking the Product : ");
+        Product product = productRepository.findById(productId).orElseThrow(
+                () -> new RuntimeException("Product Not found with ID : " + productId )
+        );
+        product.setStock(product.getStock() + quantity);
+        productRepository.save(product);
+
+    }
 }

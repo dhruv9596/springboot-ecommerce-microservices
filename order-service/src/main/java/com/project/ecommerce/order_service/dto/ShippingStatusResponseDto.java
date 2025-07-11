@@ -5,12 +5,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class OrderRequestItemDto {
-    private Long id;
-    private Long productId;
-    private Integer quantity;
+@Builder
+public class ShippingStatusResponseDto {
+    private String trackingId;
+    private String shippingStatus;
+    private LocalDate expectedDeliveryDate;
 }

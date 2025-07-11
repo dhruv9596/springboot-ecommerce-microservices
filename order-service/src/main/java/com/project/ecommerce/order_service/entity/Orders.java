@@ -20,6 +20,8 @@ public class Orders {
 
     private Double totalPrice;
 
+    private String shippingAddress;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL , orphanRemoval = true)
     private List<OrderItem> items;
 

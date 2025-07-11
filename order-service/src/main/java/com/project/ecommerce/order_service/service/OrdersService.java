@@ -1,7 +1,8 @@
 package com.project.ecommerce.order_service.service;
 
 import com.project.ecommerce.order_service.clients.InventoryOpenFeignClient;
-import com.project.ecommerce.order_service.dto.OrderRequestDto;
+import com.project.ecommerce.order_service.clients.ShippingOpenFeignClient;
+import com.project.ecommerce.order_service.dto.*;
 import com.project.ecommerce.order_service.entity.OrderItem;
 import com.project.ecommerce.order_service.entity.OrderStatus;
 import com.project.ecommerce.order_service.entity.Orders;
@@ -14,7 +15,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -24,6 +28,7 @@ public class OrdersService {
     private final OrdersRepository ordersRepository;
     private final ModelMapper modelMapper;
     private final InventoryOpenFeignClient inventoryOpenFeignClient;
+    private final ShippingOpenFeignClient shippingOpenFeignClient;
 
     public List<OrderRequestDto> getAllOrder(){
         log.info("Fetching All Orders : ");
@@ -43,7 +48,7 @@ public class OrdersService {
     //@RateLimiter(name = "inventoryRateLimiter" , fallbackMethod = "createOrderFallback")
 
     @CircuitBreaker(name = "inventoryCircuitBreaker" , fallbackMethod = "createOrderFallback")
-    public OrderRequestDto createOrder(OrderRequestDto orderRequestDto) {
+    public OrderResponseDto createOrder(OrderRequestDto orderRequestDto) {
 
         log.info("Creating order in Order-Service : ");
 
@@ -55,19 +60,71 @@ public class OrdersService {
             orderItem.setOrder(orders);
         }
         orders.setTotalPrice(totalPrice);
+        orders.setShippingAddress(orderRequestDto.getShippingAddress());
         orders.setOrderStatus(OrderStatus.CONFIRMED);
 
         Orders savedOrder = ordersRepository.save(orders);
 
-        return modelMapper.map(savedOrder , OrderRequestDto.class);
+        ShippingRequestDto shippingRequestDto = new ShippingRequestDto();
+        shippingRequestDto.setOrderId(savedOrder.getId());
+        shippingRequestDto.setShippingAddress(savedOrder.getShippingAddress());
+
+        ShippingResponseDto shippingResponseDto = shippingOpenFeignClient.createShipment(shippingRequestDto);
+
+        log.info("ShippingResponseDto : {}", shippingResponseDto.toString());
+
+        return OrderResponseDto.builder()
+                .orderId(savedOrder.getId())
+                .orderStatus(savedOrder.getOrderStatus())
+                .shippingAddress(savedOrder.getShippingAddress())
+                .totalPrice(BigDecimal.valueOf(savedOrder.getTotalPrice()))
+                .items(savedOrder.getItems().stream()
+                        .map(orderItem -> OrderRequestItemDto.builder()
+                                .id(orderItem.getId())
+                                .productId(orderItem.getProductId())
+                                .quantity(orderItem.getQuantity())
+                                .build())
+                        .collect(Collectors.toList()))
+                .trackingId(String.valueOf(shippingResponseDto.getTrackingId()))
+                .expectedDeliveryDate(LocalDate.from(shippingResponseDto.getExpectedDeliveryDate()))
+                .build();
 
     }
 
-    public OrderRequestDto createOrderFallback(OrderRequestDto orderRequestDto , Throwable throwable) {
+    public OrderResponseDto createOrderFallback(OrderRequestDto orderRequestDto, Throwable throwable) {
+        log.error("Fallback occurred due to: {}", throwable.getMessage());
 
-        log.error("Fallback occured due to : {} " , throwable.getMessage());
-        return new OrderRequestDto();
+        return OrderResponseDto.builder()
+                .orderStatus(OrderStatus.FAILED)
+                .totalPrice(BigDecimal.valueOf(0.0))
+                .items(orderRequestDto.getItems())
+                .trackingId("N/A")
+                .expectedDeliveryDate(null)
+                .build();
     }
 
+    public void cancelOrder(Long orderId) {
+        Orders order = ordersRepository.findById(orderId).orElseThrow(
+                () -> new RuntimeException("Order Not Found.")
+        );
+        if( order.getOrderStatus().equals("CANCELLED") || order.getOrderStatus().equals("DELIVERED")){
+            throw new IllegalStateException("Cannot Cancel Order in this State.");
+        }
+        order.setOrderStatus(OrderStatus.CANCELLED);
+        ordersRepository.save(order);
 
+        for( OrderItem orderItem : order.getItems() ){
+                inventoryOpenFeignClient.restockProduct( orderItem.getProductId() , orderItem.getQuantity() );
+        }
+    }
+
+    public ShippingStatusResponseDto orderShipmentStatus(Long orderId) {
+        log.info("Fetching order status with ID : {} via order-service ",orderId);
+        Orders order = ordersRepository.findById(orderId).orElseThrow(
+                () -> new RuntimeException("Order Not Found.")
+        );
+        ShippingStatusResponseDto shippingStatusResponseDto = shippingOpenFeignClient.getShippingStatus(orderId);
+        return shippingStatusResponseDto;
+
+    }
 }

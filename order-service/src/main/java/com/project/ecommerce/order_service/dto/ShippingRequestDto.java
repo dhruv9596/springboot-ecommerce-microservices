@@ -7,10 +7,11 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
-public class OrderRequestItemDto {
-    private Long id;
-    private Long productId;
-    private Integer quantity;
+@AllArgsConstructor
+public class ShippingRequestDto {
+
+    private Long orderId;
+    private String shippingAddress;
+
 }

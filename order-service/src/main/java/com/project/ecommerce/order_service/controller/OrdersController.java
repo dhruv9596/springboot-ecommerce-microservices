@@ -1,6 +1,8 @@
 package com.project.ecommerce.order_service.controller;
 
 import com.project.ecommerce.order_service.dto.OrderRequestDto;
+import com.project.ecommerce.order_service.dto.OrderResponseDto;
+import com.project.ecommerce.order_service.dto.ShippingStatusResponseDto;
 import com.project.ecommerce.order_service.service.OrdersService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -38,13 +40,31 @@ public class OrdersController {
     }
 
     @PostMapping("/create-order")
-    public ResponseEntity<OrderRequestDto> createOrder(@RequestBody OrderRequestDto orderRequestDto){
-
+    public ResponseEntity<OrderResponseDto> createOrder(@RequestBody OrderRequestDto orderRequestDto){
         //Double totalPrice = inventoryOpenFeignClient.reduceStocks(orderRequestDto);
-
-        OrderRequestDto orderRequestDto1 = ordersService.createOrder(orderRequestDto);
-
-        return ResponseEntity.ok(orderRequestDto1);
+        OrderResponseDto orderResponseDto = ordersService.createOrder(orderRequestDto);
+        return ResponseEntity.ok(orderResponseDto);
 
     }
+
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<String> cancelOrder(@PathVariable(name = "orderId") Long orderId){
+
+        log.info("Cancelling order with ID : {} via controller ",orderId);
+        ordersService.cancelOrder(orderId);
+        return ResponseEntity.ok("Order Cancelled and Order Items Restocked.");
+
+    }
+
+    @GetMapping("/status/{orderId}")
+    public ResponseEntity<ShippingStatusResponseDto> shippingStatus( @PathVariable(name = "orderId") Long orderId){
+
+        log.info("Fetching order status with ID : {} via controller ", orderId);
+        ShippingStatusResponseDto shippingStatusResponseDto = ordersService.orderShipmentStatus(orderId);
+        return ResponseEntity.ok(shippingStatusResponseDto);
+    }
+
 }
+
+
+

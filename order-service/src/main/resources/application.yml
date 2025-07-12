@@ -32,3 +32,11 @@ resilience4j:
         waitDurationOpenState : 20s
         permittedNumberOfCallsInHalfOpenState : 3
         eventConsumerBufferSize : 10
+      shippingCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize : 5
+        minimumNumberOfCalls: 2
+        failureRateThreshold : 50
+        waitDurationOpenState : 20s
+        permittedNumberOfCallsInHalfOpenState : 3
+        eventConsumerBufferSize : 10

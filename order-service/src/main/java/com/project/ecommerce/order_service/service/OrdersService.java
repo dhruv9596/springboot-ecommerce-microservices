@@ -6,6 +6,7 @@ import com.project.ecommerce.order_service.dto.*;
 import com.project.ecommerce.order_service.entity.OrderItem;
 import com.project.ecommerce.order_service.entity.OrderStatus;
 import com.project.ecommerce.order_service.entity.Orders;
+import com.project.ecommerce.order_service.entity.ShippingStatus;
 import com.project.ecommerce.order_service.repository.OrdersRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
@@ -13,7 +14,9 @@ import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -29,6 +32,9 @@ public class OrdersService {
     private final ModelMapper modelMapper;
     private final InventoryOpenFeignClient inventoryOpenFeignClient;
     private final ShippingOpenFeignClient shippingOpenFeignClient;
+
+    @Autowired
+    private ShippingClientService shippingClientService;
 
     public List<OrderRequestDto> getAllOrder(){
         log.info("Fetching All Orders : ");
@@ -69,7 +75,10 @@ public class OrdersService {
         shippingRequestDto.setOrderId(savedOrder.getId());
         shippingRequestDto.setShippingAddress(savedOrder.getShippingAddress());
 
-        ShippingResponseDto shippingResponseDto = shippingOpenFeignClient.createShipment(shippingRequestDto);
+
+        //ShippingResponseDto shippingResponseDto = createShipment(shippingRequestDto);
+
+        ShippingResponseDto shippingResponseDto = shippingClientService.createShipment(shippingRequestDto);
 
         log.info("ShippingResponseDto : {}", shippingResponseDto.toString());
 
